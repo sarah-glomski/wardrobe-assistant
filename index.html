@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Wardrobe">
+  <meta name="theme-color" content="#F0B429">
+  <title>Wardrobe Assistant</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23F0B429'/><ellipse cx='50' cy='42' rx='21' ry='24' fill='none' stroke='white' stroke-width='4.5'/><ellipse cx='43' cy='34' rx='5' ry='3' fill='white' opacity='0.45' transform='rotate(-25 43 34)'/><rect x='45' y='65' width='10' height='6' rx='3' fill='white'/><rect x='41' y='69' width='18' height='23' rx='9' fill='white'/><path d='M18 26 L20 32 L26 34 L20 36 L18 42 L16 36 L10 34 L16 32 Z' fill='white'/><path d='M79 18 L80 22 L84 23 L80 24 L79 28 L78 24 L74 23 L78 22 Z' fill='white'/><path d='M84 54 L85 57 L88 58 L85 59 L84 62 L83 59 L80 58 L83 57 Z' fill='white'/></svg>">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ── Today Screen ── -->
+    <div class="screen active" data-screen="today">
+      <div class="screen-header">
+        <h1>Today</h1>
+        <button class="header-action" data-screen="settings" title="Settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 6h16M4 12h16M4 18h16"/>
+            <circle cx="9" cy="6" r="2" fill="var(--surface2)" stroke="currentColor" stroke-width="2"/>
+            <circle cx="15" cy="12" r="2" fill="var(--surface2)" stroke="currentColor" stroke-width="2"/>
+            <circle cx="9" cy="18" r="2" fill="var(--surface2)" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Weather bar -->
+      <div id="weather-bar">
+        <div class="weather-left">
+          <div class="weather-emoji">🌤️</div>
+          <div class="weather-info">
+            <div class="weather-temp">--°F</div>
+            <div class="weather-desc">Loading…</div>
+          </div>
+        </div>
+        <div>
+          <div class="weather-location">📍 Detecting…</div>
+          <div class="weather-change">Change ›</div>
+        </div>
+      </div>
+
+      <!-- Weather alert -->
+      <div id="weather-alert" class="weather-alert hidden"></div>
+
+      <!-- Occasion selector -->
+      <div class="occasion-bar">
+        <button class="occasion-chip active" data-occasion="casual">Casual</button>
+        <button class="occasion-chip" data-occasion="work">Work</button>
+        <button class="occasion-chip" data-occasion="going out">Going out</button>
+        <button class="occasion-chip" data-occasion="athletic">Athletic</button>
+        <button class="occasion-chip" data-occasion="comfy">Comfy day</button>
+      </div>
+
+      <!-- Outfit card -->
+      <div id="outfit-card" style="margin:14px 16px 0">
+        <div class="empty-state">
+          <div class="empty-icon">✨</div>
+          <p>Loading your outfit…</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Closet Screen ── -->
+    <div class="screen" data-screen="closet">
+      <div class="screen-header"><h1>My Closet</h1><div></div></div>
+    </div>
+
+    <!-- ── History Screen ── -->
+    <div class="screen" data-screen="history">
+      <div class="screen-header"><h1>History</h1><div></div></div>
+    </div>
+
+    <!-- ── Settings Screen ── -->
+    <div class="screen" data-screen="settings">
+      <div class="screen-header"><h1>Settings</h1><div></div></div>
+    </div>
+
+    <!-- ── Add Item Screen (overlay) ── -->
+    <div id="add-screen" class="screen" style="position:fixed;inset:0;z-index:50;background:var(--bg)"></div>
+
+    <!-- ── Bottom Nav ── -->
+    <nav id="nav">
+      <button class="nav-btn active" data-screen="today">
+        <span class="nav-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2m0 16v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M2 12h2m16 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+        </span>
+        <span class="nav-label">Today</span>
+      </button>
+      <button class="nav-btn" data-screen="closet">
+        <span class="nav-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3.5a2 2 0 0 1 2 2"/>
+            <line x1="12" y1="5.5" x2="12" y2="8.5"/>
+            <path d="M12 8.5L3 18h18L12 8.5z"/>
+          </svg>
+        </span>
+        <span class="nav-label">Closet</span>
+      </button>
+      <button class="nav-add" id="nav-add" title="Add item">＋</button>
+      <button class="nav-btn" data-screen="history">
+        <span class="nav-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="3"/>
+            <path d="M16 2v4M8 2v4M3 10h18"/>
+          </svg>
+        </span>
+        <span class="nav-label">History</span>
+      </button>
+      <button class="nav-btn" data-screen="settings">
+        <span class="nav-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M4 6h16M4 12h16M4 18h16"/>
+            <circle cx="9" cy="6" r="2.5" fill="var(--bg)" stroke="currentColor" stroke-width="2"/>
+            <circle cx="15" cy="12" r="2.5" fill="var(--bg)" stroke="currentColor" stroke-width="2"/>
+            <circle cx="9" cy="18" r="2.5" fill="var(--bg)" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </span>
+        <span class="nav-label">Settings</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
