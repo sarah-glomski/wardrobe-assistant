@@ -1,4 +1,4 @@
-const CACHE = 'wardrobe-v28';
+const CACHE = 'wardrobe-v30';
 const ASSETS = ['./', './index.html', './styles.css', './js/db.js', './js/weather.js', './js/gemini.js', './js/outfits.js', './js/app.js'];
 
 self.addEventListener('install', e => {

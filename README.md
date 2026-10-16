@@ -21,7 +21,7 @@ Without a key the app still works — you just fill in the tags yourself.
 
 ## Features
 
-- **Today** — weather-aware outfit suggestion, pick an occasion, log what you wore
+- **Today** — outfit suggestion for the forecast **all day** (8am–6pm) or for the **evening** (6pm–midnight), pick an occasion, log what you wore
 - **Closet** — browse by category, search by name/color/vibe/season, spot "Unworn" items
 - **Add item** — take a photo, AI suggests the category/colors/vibes/season/pattern/name
 - **History** — reverse-chronological log of every outfit you've worn
@@ -39,7 +39,7 @@ python3 -m http.server 8000
 Two notes when testing on `localhost` or over plain HTTP:
 
 - **Geolocation** only works on `localhost` and HTTPS. On other HTTP origins the app silently falls back to IP-based location via `ipapi.co`.
-- **Service worker caching** is aggressive. After changing a file, bump `CACHE` in `sw.js` (currently `wardrobe-v28`) or unregister the worker in DevTools, otherwise you'll keep loading the cached copy.
+- **Service worker caching** is aggressive. After changing a file, bump `CACHE` in `sw.js` (currently `wardrobe-v30`) or unregister the worker in DevTools, otherwise you'll keep loading the cached copy.
 
 For hosting, any static host works — the whole app is the files in this repo.
 
@@ -65,7 +65,7 @@ Four IndexedDB stores in `wardrobeDB` (v1), all with auto-incrementing `id`:
 
 | Store | Shape |
 | --- | --- |
-| `items` | `{ id, name, category, colors[], vibes[], seasons[], pattern, photo, dateAdded }` — `photo` is a base64 JPEG data URL, resized to max 800px at 85% quality on import |
+| `items` | `{ id, name, category, colors[], vibes[], seasons[], warmth?, pattern, photo, dateAdded }` — `warmth` is 1–5; when absent it's estimated from the name and category — `photo` is a base64 JPEG data URL, resized to max 800px at 85% quality on import |
 | `wearLog` | `{ id, itemIds[], date }` — `date` is `YYYY-MM-DD` |
 | `outfits` | Reserved for saved outfits — `db.js` has the accessors and export includes the store, but nothing writes to it or reads it back on import yet |
 | `settings` | `{ key, value }` — currently just `geminiKey` |
@@ -76,24 +76,27 @@ Because photos are stored inline as base64, exports get large fast — a full wa
 
 ### How suggestions are scored
 
-`buildOutfitSuggestion()` scores every item, sorts once, then fills the slots (top, bottom or dress, shoes, outerwear, bag) from the top of that list. Per item:
+The Today screen fetches Open-Meteo's hourly forecast and summarizes one window: **All day** (8am–6pm) or **Evening** (6pm–midnight), starting from the current hour if the window has begun. It defaults to All day before 3pm and Evening after, and picking *Going out* switches to Evening. Scoring uses the window's feels-like low and high, peak rain chance, and wind.
 
-- **Recency** — `+1` per day since last worn, capped at `+60`. This is what surfaces neglected clothes.
-- **Occasion** — `+25`, plus `+5` per matching vibe tag, if any of the item's vibes match the occasion's preferred list. `-20` if the item has vibes but none of them match. Deliberately strong enough to override recency.
-- **Season** — `+20` if the item's seasons include the season implied by the current temperature (or `all-season`), `-30` if it's tagged for other seasons, `+5` if untagged.
-- **Weather** — `+30` for outerwear under 45°F, `-40` for outerwear over 75°F, `-25` for dressy or suede shoes in the rain.
-- **Jitter** — `±7.5` random, so the same closet doesn't yield the identical outfit every morning.
+`buildOutfitSuggestion()` scores every item, then fills each slot (top, bottom or dress, shoes, outerwear, bag) with a weighted random pick. Per item:
 
-A dress wins over a top-and-bottom pairing only if it out-scores their average. The shuffle button reshuffles the input array, which changes tie-breaks and re-rolls the jitter.
+- **Weather fit** — each item has a warmth from 1 (shorts, tanks) to 5 (heavy coat), set on the add/edit screen or estimated by `inferWarmth()` from keywords in the name. Tops must suit the window's *high* (a jacket covers the cold part); bottoms and dresses must suit both the *low* and the high, since you can't layer over bare legs. Any miss costs `-100` plus `2×` the degrees missed, so an item that fits always beats one that doesn't, but the closest miss still fills a slot if nothing fits.
+- **Outerwear** — added when the low feels under 62°F, or it's rainy (under 75°F) or windy (under 68°F). Its warmth is matched to the low.
+- **Recency** — `+1` per day since last worn, capped at `+30`. This is what surfaces neglected clothes.
+- **Occasion** — `+25`, plus `+5` per matching vibe tag (counting at most two), if any of the item's vibes match the occasion's preferred list. `-20` if the item has vibes but none of them match.
+- **Rain** — `-25` for dressy or suede shoes.
+- **Recently suggested** — `-15` for each of the last 4 suggestions the item appeared in, so shuffling moves through the closet instead of reshuffling the same few pieces.
 
-Temperature bands (`isCold` / `isCool` / `isMild` / `isWarm`, and the season mapping) are defined in `weather.js` and `outfits.js` respectively — under 45°F is winter, 45–62°F fall, 62–75°F spring, 75°F+ summer. Adjust to taste if you don't live where those numbers make sense.
+Season tags are kept for display and search but no longer affect scoring. The comfort ranges per warmth level (`TOP_RANGE` / `LEGS_RANGE`) and the outerwear thresholds live at the top of `outfits.js`; adjust to taste.
+
+Picks are a softmax over scores: an item 10 points behind (`TEMPERATURE` in `outfits.js`) is about 2.7× less likely to be chosen than the leader, so good matches win most of the time without winning every time. A weather miss sits 100+ points behind and effectively never gets picked. Dress vs. top-and-bottom is the same kind of weighted pick, between the dress and the pair's average score. Raise `TEMPERATURE` for more variety, lower it for more predictable picks.
 
 ### External services
 
 All four are keyless and free except Gemini, which uses your own key:
 
 - **Gemini** (`generativelanguage.googleapis.com`) — clothing photo analysis. Tries `gemini-3.5-flash` first and falls back to `gemini-3.5-flash-lite` on rate limits or overload, with a countdown retry on 429s. Model list is the `MODELS` array in `js/gemini.js`.
-- **Open-Meteo** — current temperature, weather code, wind, precipitation chance.
+- **Open-Meteo** — current conditions plus today's hourly temperature, feels-like, weather code, wind and precipitation chance.
 - **Nominatim** (OpenStreetMap) — city search and reverse geocoding.
 - **ipapi.co** — IP-based location fallback when GPS is unavailable.
 

@@ -1,7 +1,7 @@
 import { db } from './db.js';
-import { getCurrentLocation, getIPLocation, getWeather, reverseGeocode, searchLocations, weatherEmoji } from './weather.js';
+import { formatHour, getCurrentLocation, getIPLocation, getWeather, reverseGeocode, searchLocations, summarizeWindow, weatherEmoji } from './weather.js';
 import { analyzeClothing, resizeImage } from './gemini.js';
-import { buildOutfitSuggestion, getUnwornItems, getItemLastWorn, getWearCount } from './outfits.js';
+import { WARMTH_LABELS, buildOutfitSuggestion, getUnwornItems, getItemLastWorn, getWearCount, inferWarmth, weatherAdvice } from './outfits.js';
 
 // ── State ──
 let state = {
@@ -13,13 +13,15 @@ let state = {
   items: [],
   wearLog: [],
   currentOccasion: 'casual',
+  forecastWindow: new Date().getHours() < 15 ? 'day' : 'evening',
   currentOutfit: null,
+  recentSuggestions: [], // item ids of the last few outfits shown, newest first
   closetFilter: 'all',
   closetSearch: '',
   geminiKey: '',
   addPhoto: null,
   addAnalysis: null,
-  addSelections: { category: null, colors: [], vibes: [], seasons: [], pattern: null, name: '' },
+  addSelections: { category: null, colors: [], vibes: [], seasons: [], warmth: null, pattern: null, name: '' },
   editingItemId: null,
 };
 
@@ -95,17 +97,7 @@ async function loadWeather(lat, lng, name) {
     bar.querySelector('.weather-emoji').textContent = weatherEmoji(w.code);
     bar.querySelector('.weather-location').innerHTML = `📍 ${name}`;
 
-    const alert = document.getElementById('weather-alert');
-    if (w.isRainy) {
-      alert.textContent = '🌧 Rain expected — consider a water-resistant jacket and practical shoes';
-      alert.classList.remove('hidden');
-    } else if (w.isSnowy) {
-      alert.textContent = '❄️ Snow expected — layer up and wear waterproof boots';
-      alert.classList.remove('hidden');
-    } else {
-      alert.classList.add('hidden');
-    }
-
+    renderForecast();
     if (state.screen === 'today') renderOutfit();
   } catch {
     bar.querySelector('.weather-desc').textContent = 'Tap to set location';
@@ -232,9 +224,51 @@ document.querySelectorAll('.occasion-chip').forEach(chip => {
     document.querySelectorAll('.occasion-chip').forEach(c => c.classList.remove('active'));
     chip.classList.add('active');
     state.currentOccasion = chip.dataset.occasion;
-    renderOutfit();
+    if (state.currentOccasion === 'going out') setForecastWindow('evening');
+    else renderOutfit();
   });
 });
+
+// ── Forecast window ──
+document.querySelectorAll('.window-btn').forEach(btn => {
+  btn.classList.toggle('active', btn.dataset.window === state.forecastWindow);
+  btn.addEventListener('click', () => setForecastWindow(btn.dataset.window));
+});
+
+function setForecastWindow(key) {
+  state.forecastWindow = key;
+  document.querySelectorAll('.window-btn').forEach(b => b.classList.toggle('active', b.dataset.window === key));
+  renderForecast();
+  renderOutfit();
+}
+
+function currentForecast() {
+  return state.weather ? summarizeWindow(state.weather, state.forecastWindow) : null;
+}
+
+function renderForecast() {
+  const wx = currentForecast();
+  const range = document.getElementById('forecast-range');
+  const alert = document.getElementById('weather-alert');
+  if (!wx) {
+    range.textContent = '';
+    alert.classList.add('hidden');
+    return;
+  }
+
+  const temps = wx.low === wx.high ? `${wx.low}°F` : `${wx.low}–${wx.high}°F`;
+  range.textContent = wx.peakPrecip >= 30 ? `${temps} · 💧${wx.peakPrecip}% at ${formatHour(wx.peakPrecipHour)}` : temps;
+
+  if (wx.isSnowy) {
+    alert.textContent = '❄️ Snow expected — layer up and wear waterproof boots';
+    alert.classList.remove('hidden');
+  } else if (wx.isRainy) {
+    alert.textContent = '🌧 Rain expected — consider a water-resistant jacket and practical shoes';
+    alert.classList.remove('hidden');
+  } else {
+    alert.classList.add('hidden');
+  }
+}
 
 // ── Today / Outfit ──
 async function renderToday() {
@@ -253,14 +287,18 @@ function renderOutfit() {
     </div>`;
     return;
   }
-  const outfit = buildOutfitSuggestion(state.items, state.wearLog, state.weather, state.currentOccasion);
+  const wx = currentForecast();
+  const outfit = buildOutfitSuggestion(state.items, state.wearLog, wx, state.currentOccasion, state.recentSuggestions);
   state.currentOutfit = outfit;
 
   const pieces = Object.entries(outfit).filter(([, v]) => v);
-  const weatherLabel = state.weather ? `${state.weather.temp}°F · ${state.weather.description}` : 'Today';
+  state.recentSuggestions = [pieces.map(([, item]) => item.id), ...state.recentSuggestions].slice(0, 4);
+  const weatherLabel = wx ? `${wx.low === wx.high ? wx.low : `${wx.low}–${wx.high}`}°F · ${wx.label}` : 'Today';
+  const advice = weatherAdvice(wx);
 
   card.innerHTML = `
     <div class="outfit-label">✨ Suggested for ${weatherLabel}</div>
+    ${advice ? `<div class="outfit-advice">${advice}</div>` : ''}
     <div class="outfit-grid" id="outfit-grid"></div>
     <div class="outfit-actions">
       <button class="btn-wear" id="btn-wear">I wore this ✓</button>
@@ -291,10 +329,7 @@ function renderOutfit() {
     grid.appendChild(div);
   });
 
-  document.getElementById('btn-shuffle').addEventListener('click', () => {
-    state.items = [...state.items].sort(() => Math.random() - 0.5);
-    renderOutfit();
-  });
+  document.getElementById('btn-shuffle').addEventListener('click', renderOutfit);
 
   document.getElementById('btn-wear').addEventListener('click', async () => {
     const ids = pieces.map(([, item]) => item.id);
@@ -416,6 +451,7 @@ function renderClosetGrid() {
 function openItemSheet(item) {
   const wornCount = getWearCount(item, state.wearLog);
   const lastWorn = getItemLastWorn(item, state.wearLog);
+  const warmth = inferWarmth(item);
   const overlay = document.createElement('div');
   overlay.className = 'sheet-overlay';
   overlay.innerHTML = `
@@ -430,6 +466,7 @@ function openItemSheet(item) {
         ).join('')}</div>
         <div class="tags-row">${(item.vibes ?? []).map(v => `<span class="tag tag-vibe">${v}</span>`).join('')}</div>
         <div class="tags-row">${(item.seasons ?? []).map(s => `<span class="tag tag-season">${s}</span>`).join('')}</div>
+        ${warmth ? `<div class="tags-row"><span class="tag tag-season">🌡 ${WARMTH_LABELS[warmth]}${item.warmth ? '' : ' (estimated)'}</span></div>` : ''}
         ${item.pattern && item.pattern !== 'solid' ? `<div class="tags-row"><span class="tag tag-color">${item.pattern}</span></div>` : ''}
         <div class="sheet-actions">
           <button class="btn-secondary" id="sheet-wear">Mark worn today</button>
@@ -582,6 +619,7 @@ function openAddScreen(editItem = null) {
     colors: editItem.colors,
     vibes: editItem.vibes,
     seasons: editItem.seasons,
+    warmth: inferWarmth(editItem),
     pattern: editItem.pattern,
     _customVibes: (editItem.vibes ?? []).filter(v => !DEFAULT_VIBES.includes(v)),
     _customPatterns: editItem.pattern && !DEFAULT_PATTERNS.includes(editItem.pattern) ? [editItem.pattern] : [],
@@ -591,9 +629,10 @@ function openAddScreen(editItem = null) {
     colors: [...(editItem.colors ?? [])],
     vibes: [...(editItem.vibes ?? [])],
     seasons: [...(editItem.seasons ?? [])],
+    warmth: editItem.warmth ?? null,
     pattern: editItem.pattern ?? null,
     name: editItem.name ?? '',
-  } : { category: null, colors: [], vibes: [], seasons: [], pattern: null, name: '' };
+  } : { category: null, colors: [], vibes: [], seasons: [], warmth: null, pattern: null, name: '' };
 
   const screen = document.getElementById('add-screen');
   screen.classList.add('active');
@@ -606,6 +645,18 @@ function closeAddScreen() {
 
 const DEFAULT_VIBES = ['casual','dressy','cozy','edgy','romantic','athletic','professional','boho','minimalist','Y2K','cottagecore','coastal','academic','streetwear','vintage','quiet luxury','preppy','feminine','androgynous','grunge','western','party'];
 const DEFAULT_PATTERNS = ['solid','floral','striped','plaid','denim','graphic','textured','animal print','geometric','abstract','embroidered','lace','crochet','other'];
+const validWarmth = w => (Number.isInteger(w) && w >= 1 && w <= 5 ? w : null);
+
+function applyAnalysis(analysis) {
+  state.addAnalysis = analysis;
+  if (analysis.suggestedName) state.addSelections.name = analysis.suggestedName;
+  if (analysis.category) state.addSelections.category = analysis.category;
+  state.addSelections.colors = analysis.colors ?? [];
+  state.addSelections.vibes = analysis.vibes ?? [];
+  state.addSelections.seasons = analysis.seasons ?? [];
+  state.addSelections.warmth = validWarmth(analysis.warmth);
+  state.addSelections.pattern = analysis.pattern ?? null;
+}
 
 function renderAddScreen() {
   const screen = document.getElementById('add-screen');
@@ -690,6 +741,18 @@ function renderAddScreen() {
         </div>
       </div>
 
+      ${!s.category || ['top','bottom','dress','outerwear','shoes'].includes(s.category) ? `
+      <div class="field-section">
+        <div class="field-label">Warmth</div>
+        <div class="chips-wrap" id="chips-warmth">
+          ${Object.entries(WARMTH_LABELS).map(([w, label]) => {
+            const isSuggested = (a?.warmth ?? inferWarmth({ name: s.name, category: s.category })) === Number(w);
+            const isSelected = s.warmth === Number(w);
+            return `<button class="chip${isSuggested ? ' suggested' : ''}${isSelected ? ' selected' : ''}" data-field="warmth" data-val="${w}">${label}</button>`;
+          }).join('')}
+        </div>
+      </div>` : ''}
+
       <div class="field-section">
         <div class="field-label">Pattern</div>
         <div class="chips-wrap" id="chips-pattern">
@@ -737,13 +800,7 @@ function renderAddScreen() {
         if (analysis.error) {
           state.addAnalysis = { _error: "Couldn't see a clothing item clearly — try a photo of the full piece laid flat or on a hanger." };
         } else {
-          state.addAnalysis = analysis;
-          if (analysis.suggestedName) state.addSelections.name = analysis.suggestedName;
-          if (analysis.category) state.addSelections.category = analysis.category;
-          state.addSelections.colors = analysis.colors ?? [];
-          state.addSelections.vibes = analysis.vibes ?? [];
-          state.addSelections.seasons = analysis.seasons ?? [];
-          state.addSelections.pattern = analysis.pattern ?? null;
+          applyAnalysis(analysis);
         }
         renderAddScreen();
       } catch (err) {
@@ -758,7 +815,9 @@ function renderAddScreen() {
       const field = btn.dataset.field;
       const val = btn.dataset.val;
       const scrollTop = document.querySelector('.add-content')?.scrollTop ?? 0;
-      if (field === 'category' || field === 'pattern') {
+      if (field === 'warmth') {
+        state.addSelections.warmth = state.addSelections.warmth === Number(val) ? null : Number(val);
+      } else if (field === 'category' || field === 'pattern') {
         state.addSelections[field] = state.addSelections[field] === val ? null : val;
       } else {
         const arr = state.addSelections[field];
@@ -867,13 +926,7 @@ async function handlePhotoSelected(e) {
     if (analysis.error) {
       state.addAnalysis = { _error: "Couldn't see a clothing item clearly — try a photo of the full piece laid flat or on a hanger." };
     } else {
-      state.addAnalysis = analysis;
-      if (analysis.suggestedName) state.addSelections.name = analysis.suggestedName;
-      if (analysis.category) state.addSelections.category = analysis.category;
-      state.addSelections.colors = analysis.colors ?? [];
-      state.addSelections.vibes = analysis.vibes ?? [];
-      state.addSelections.seasons = analysis.seasons ?? [];
-      state.addSelections.pattern = analysis.pattern ?? null;
+      applyAnalysis(analysis);
     }
     renderAddScreen();
   } catch (err) {
@@ -893,6 +946,7 @@ async function saveItem() {
     colors: s.colors,
     vibes: s.vibes,
     seasons: s.seasons,
+    warmth: s.warmth ?? undefined,
     pattern: s.pattern,
     photo: state.addPhoto,
     dateAdded: new Date().toISOString(),

@@ -8,6 +8,7 @@ Otherwise return exactly this structure with no extra text:
   "colors": array of 1-3 specific color names (e.g. "dusty rose", "cobalt blue"),
   "vibes": array of 2-5 tags from ["casual","dressy","cozy","edgy","romantic","athletic","professional","boho","minimalist","Y2K","cottagecore","coastal","academic","streetwear","vintage","quiet luxury","preppy","feminine","androgynous","grunge","western","party"],
   "seasons": array from ["spring","summer","fall","winter","all-season"],
+  "warmth": integer 1-5 for how warm it is to wear (1 = shorts, tank, strapless, sandals; 2 = t-shirt, skirt, light dress; 3 = jeans, long sleeves, light jacket; 4 = sweater, corduroy, boots, warm jacket; 5 = heavy winter coat), or null for bags and accessories,
   "pattern": one of ["solid","floral","striped","plaid","denim","graphic","textured","animal print","geometric","abstract","embroidered","lace","crochet","other"],
   "suggestedName": a short 2-4 word name (e.g. "white linen blouse")
 }`;

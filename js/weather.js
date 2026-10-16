@@ -33,25 +33,71 @@ export async function getIPLocation() {
   };
 }
 
+// Hours are local to the forecast location; end is exclusive (24 = midnight)
+export const WINDOWS = {
+  day:     { start: 8,  end: 18, label: 'all day' },
+  evening: { start: 18, end: 24, label: 'evening' },
+};
+
 export async function getWeather(lat, lng) {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weathercode,windspeed_10m,precipitation_probability&temperature_unit=fahrenheit&timezone=auto&forecast_days=1`;
+  const vars = 'temperature_2m,apparent_temperature,weathercode,windspeed_10m,precipitation_probability';
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=${vars}&hourly=${vars}&temperature_unit=fahrenheit&windspeed_unit=mph&timezone=auto&forecast_days=1`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('Weather fetch failed');
   const data = await res.json();
   const c = data.current;
+  const h = data.hourly;
   return {
     temp: Math.round(c.temperature_2m),
     code: c.weathercode,
     description: WMO[c.weathercode] ?? 'Unknown',
     windspeed: Math.round(c.windspeed_10m),
     precipChance: c.precipitation_probability,
-    isRainy: RAIN_CODES.has(c.weathercode) || c.precipitation_probability > 50,
-    isSnowy: SNOW_CODES.has(c.weathercode),
-    isCold: c.temperature_2m < 45,
-    isCool: c.temperature_2m >= 45 && c.temperature_2m < 62,
-    isMild: c.temperature_2m >= 62 && c.temperature_2m < 75,
-    isWarm: c.temperature_2m >= 75,
+    // timezone=auto returns local times like "2026-10-16T14:15", so the hour is the location's, not the device's
+    nowHour: parseInt(c.time.slice(11, 13), 10),
+    hourly: h.time.map((t, i) => ({
+      hour: parseInt(t.slice(11, 13), 10),
+      temp: h.temperature_2m[i],
+      feels: h.apparent_temperature[i],
+      code: h.weathercode[i],
+      wind: h.windspeed_10m[i],
+      precip: h.precipitation_probability[i] ?? 0,
+    })),
   };
+}
+
+// Collapse the hours in a window into the numbers outfit scoring needs.
+// A window that has already started begins at the current hour; one that has
+// fully passed falls back to the rest of today.
+export function summarizeWindow(weather, windowKey) {
+  const win = WINDOWS[windowKey] ?? WINDOWS.day;
+  const start = Math.max(win.start, weather.nowHour);
+  let hours = weather.hourly.filter(h => h.hour >= start && h.hour < win.end);
+  if (!hours.length) hours = weather.hourly.filter(h => h.hour >= weather.nowHour);
+  if (!hours.length) return null;
+
+  const wettest = hours.reduce((a, b) => (b.precip > a.precip ? b : a));
+  const lowFeels = Math.min(...hours.map(h => h.feels));
+  const highFeels = Math.max(...hours.map(h => h.feels));
+  return {
+    window: windowKey,
+    label: win.label,
+    low: Math.round(Math.min(...hours.map(h => h.temp))),
+    high: Math.round(Math.max(...hours.map(h => h.temp))),
+    lowFeels: Math.round(lowFeels),
+    highFeels: Math.round(highFeels),
+    swing: Math.round(highFeels - lowFeels),
+    peakPrecip: wettest.precip,
+    peakPrecipHour: wettest.hour,
+    maxWind: Math.round(Math.max(...hours.map(h => h.wind))),
+    isRainy: wettest.precip >= 50 || hours.some(h => RAIN_CODES.has(h.code)),
+    isSnowy: hours.some(h => SNOW_CODES.has(h.code)),
+    isWindy: hours.some(h => h.wind >= 20),
+  };
+}
+
+export function formatHour(hour) {
+  return `${hour % 12 || 12}${hour < 12 ? 'am' : 'pm'}`;
 }
 
 export async function reverseGeocode(lat, lng) {
