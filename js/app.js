@@ -1,6 +1,7 @@
 import { db } from './db.js';
 import { formatHour, getCurrentLocation, getIPLocation, getWeather, reverseGeocode, searchLocations, summarizeWindow, weatherEmoji } from './weather.js';
 import { analyzeClothing, resizeImage } from './gemini.js';
+import { colorForName } from './colors.js';
 import { WARMTH_LABELS, buildOutfitSuggestion, getUnwornItems, getItemLastWorn, getWearCount, inferWarmth, weatherAdvice } from './outfits.js';
 
 // ── State ──
@@ -24,33 +25,6 @@ let state = {
   addSelections: { category: null, colors: [], vibes: [], seasons: [], warmth: null, pattern: null, name: '' },
   editingItemId: null,
 };
-
-// ── Color name → CSS color mapping ──
-const COLOR_MAP = {
-  'black': '#1a1a1a', 'white': '#f5f5f5', 'off-white': '#f0ece4', 'cream': '#f5f0e0',
-  'red': '#d94040', 'crimson': '#a31515', 'burgundy': '#722f3b', 'wine': '#6b2737',
-  'pink': '#e8a0b0', 'dusty rose': '#c49aaa', 'blush': '#f0c4cc', 'hot pink': '#e8477a',
-  'fuchsia': '#c8306e', 'mauve': '#b07888', 'rose': '#d46080',
-  'orange': '#e87030', 'coral': '#e87060', 'peach': '#f0b898', 'rust': '#b04820',
-  'yellow': '#e8c840', 'mustard': '#c89820', 'gold': '#d4a824', 'lemon': '#f0e060',
-  'green': '#4a9450', 'sage': '#8aaa8a', 'olive': '#7a8450', 'forest green': '#2d6040',
-  'mint': '#a0d8c0', 'emerald': '#1a7850', 'lime': '#88c038', 'army green': '#5a6840',
-  'blue': '#4060c8', 'navy': '#1a2a60', 'cobalt': '#1840c0', 'sky blue': '#60a8e8',
-  'baby blue': '#a8c8f0', 'royal blue': '#2848a8', 'denim': '#4a6890', 'indigo': '#3828a0',
-  'purple': '#7840c0', 'lavender': '#b090d8', 'lilac': '#c0a8d8', 'violet': '#5028a0',
-  'brown': '#7a5030', 'camel': '#c89858', 'tan': '#c8a878', 'beige': '#d8c8a8',
-  'khaki': '#b8a870', 'chocolate': '#5a3018', 'taupe': '#a89880',
-  'grey': '#909090', 'gray': '#909090', 'charcoal': '#484848', 'silver': '#c0c0c0',
-  'light grey': '#c8c8c8', 'dark grey': '#585858',
-};
-
-function colorForName(name) {
-  const lower = name.toLowerCase();
-  for (const [k, v] of Object.entries(COLOR_MAP)) {
-    if (lower.includes(k)) return v;
-  }
-  return '#c8c8c8';
-}
 
 // ── Navigation ──
 function showScreen(name) {
@@ -92,8 +66,8 @@ async function loadWeather(lat, lng, name) {
     const w = await getWeather(lat, lng);
     state.weather = w;
     state.locationName = name;
-    bar.querySelector('.weather-temp').textContent = `${w.temp}°F`;
-    bar.querySelector('.weather-desc').textContent = w.description;
+    bar.querySelector('.weather-temp').textContent = `${w.feels}°F`;
+    bar.querySelector('.weather-desc').textContent = `Feels like · ${w.description}`;
     bar.querySelector('.weather-emoji').textContent = weatherEmoji(w.code);
     bar.querySelector('.weather-location').innerHTML = `📍 ${name}`;
 
@@ -246,6 +220,8 @@ function currentForecast() {
   return state.weather ? summarizeWindow(state.weather, state.forecastWindow) : null;
 }
 
+const feelsRange = wx => (wx.lowFeels === wx.highFeels ? `${wx.lowFeels}°F` : `${wx.lowFeels}–${wx.highFeels}°F`);
+
 function renderForecast() {
   const wx = currentForecast();
   const range = document.getElementById('forecast-range');
@@ -256,7 +232,7 @@ function renderForecast() {
     return;
   }
 
-  const temps = wx.low === wx.high ? `${wx.low}°F` : `${wx.low}–${wx.high}°F`;
+  const temps = `Feels ${feelsRange(wx)}`;
   range.textContent = wx.peakPrecip >= 30 ? `${temps} · 💧${wx.peakPrecip}% at ${formatHour(wx.peakPrecipHour)}` : temps;
 
   if (wx.isSnowy) {
@@ -293,7 +269,7 @@ function renderOutfit() {
 
   const pieces = Object.entries(outfit).filter(([, v]) => v);
   state.recentSuggestions = [pieces.map(([, item]) => item.id), ...state.recentSuggestions].slice(0, 4);
-  const weatherLabel = wx ? `${wx.low === wx.high ? wx.low : `${wx.low}–${wx.high}`}°F · ${wx.label}` : 'Today';
+  const weatherLabel = wx ? `${feelsRange(wx)} · ${wx.label}` : 'Today';
   const advice = weatherAdvice(wx);
 
   card.innerHTML = `
@@ -591,13 +567,15 @@ async function renderSettings() {
       if (!data.items) throw new Error('Invalid backup file');
       const confirmed = confirm(`Import ${data.items.length} items? This will add to your existing wardrobe.`);
       if (!confirmed) return;
+      // Items get fresh ids here, so wear logs have to be pointed at the new ones
+      const newIds = new Map();
       for (const item of data.items) {
-        const { id: _, ...itemWithoutId } = item;
-        await db.saveItem(itemWithoutId);
+        const { id: oldId, ...itemWithoutId } = item;
+        newIds.set(oldId, await db.saveItem(itemWithoutId));
       }
       for (const log of (data.wearLog ?? [])) {
-        const { id: _, ...logWithoutId } = log;
-        await db.logWear(logWithoutId.itemIds, logWithoutId.date);
+        const itemIds = log.itemIds.map(id => newIds.get(id)).filter(id => id !== undefined);
+        if (itemIds.length) await db.logWear(itemIds, log.date);
       }
       state.items = await db.getItems();
       state.wearLog = await db.getWearLog();

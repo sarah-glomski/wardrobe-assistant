@@ -1,5 +1,5 @@
-const CACHE = 'wardrobe-v30';
-const ASSETS = ['./', './index.html', './styles.css', './js/db.js', './js/weather.js', './js/gemini.js', './js/outfits.js', './js/app.js'];
+const CACHE = 'wardrobe-v32';
+const ASSETS = ['./', './index.html', './styles.css', './js/db.js', './js/colors.js', './js/weather.js', './js/gemini.js', './js/outfits.js', './js/app.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).catch(() => {}));

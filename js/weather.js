@@ -40,7 +40,7 @@ export const WINDOWS = {
 };
 
 export async function getWeather(lat, lng) {
-  const vars = 'temperature_2m,apparent_temperature,weathercode,windspeed_10m,precipitation_probability';
+  const vars = 'apparent_temperature,weathercode,windspeed_10m,precipitation_probability';
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=${vars}&hourly=${vars}&temperature_unit=fahrenheit&windspeed_unit=mph&timezone=auto&forecast_days=1`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('Weather fetch failed');
@@ -48,7 +48,7 @@ export async function getWeather(lat, lng) {
   const c = data.current;
   const h = data.hourly;
   return {
-    temp: Math.round(c.temperature_2m),
+    feels: Math.round(c.apparent_temperature),
     code: c.weathercode,
     description: WMO[c.weathercode] ?? 'Unknown',
     windspeed: Math.round(c.windspeed_10m),
@@ -57,7 +57,6 @@ export async function getWeather(lat, lng) {
     nowHour: parseInt(c.time.slice(11, 13), 10),
     hourly: h.time.map((t, i) => ({
       hour: parseInt(t.slice(11, 13), 10),
-      temp: h.temperature_2m[i],
       feels: h.apparent_temperature[i],
       code: h.weathercode[i],
       wind: h.windspeed_10m[i],
@@ -82,8 +81,6 @@ export function summarizeWindow(weather, windowKey) {
   return {
     window: windowKey,
     label: win.label,
-    low: Math.round(Math.min(...hours.map(h => h.temp))),
-    high: Math.round(Math.max(...hours.map(h => h.temp))),
     lowFeels: Math.round(lowFeels),
     highFeels: Math.round(highFeels),
     swing: Math.round(highFeels - lowFeels),
