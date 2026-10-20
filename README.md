@@ -4,20 +4,15 @@ A personal outfit planner that helps you actually use your whole closet. Add you
 
 It's a single-page PWA — no build step, no server, no account. Everything lives in your browser's IndexedDB on your own device.
 
-## Install on iPhone
+## Use it
 
-1. Open the link in **Safari**
-2. Tap the Share button → **Add to Home Screen**
-3. Done — it works like an app, including offline
+**[Open the app](https://sarah-glomski.github.io/wardrobe-assistant/)** · **[How to install and use it](https://sarah-glomski.github.io/wardrobe-assistant/help.html)**
 
-## Setup
+It's free, and each person's closet stays private on their own phone. To share it, send someone the guide link above. In short:
 
-You need a free Gemini API key for AI photo tagging:
-
-1. Go to [aistudio.google.com](https://aistudio.google.com) → **Get API Key**
-2. Open the app → **Settings** → paste your key → **Save Key**
-
-Without a key the app still works — you just fill in the tags yourself.
+1. **Install:** open the app in Safari (iPhone) or Chrome (Android) and add it to your home screen. Use the home screen, not a bookmark: Safari can erase a bookmarked site's data after about a week without a visit.
+2. **AI tagging (optional):** get a free Gemini API key at [aistudio.google.com](https://aistudio.google.com) → **Get API Key**, then paste it into **Settings** → **Save Key**. Without a key, you fill in the tags yourself. On the free tier, Google may use the photos you tag to improve its products.
+3. **Back up:** **Settings → Export wardrobe** now and then. If you delete the app or clear browser data, your closet is gone, and nobody else has a copy.
 
 ## Features
 
@@ -47,6 +42,7 @@ For hosting, any static host works — the whole app is the files in this repo.
 
 ```
 index.html      Static shell for all five screens + bottom nav
+help.html       User guide for people you share the app with (install, AI key, backups)
 styles.css      All styling; theme lives in CSS custom properties at the top
 manifest.json   PWA manifest (inline SVG icon, standalone display)
 sw.js           Service worker — cache-first for app files, network passthrough for APIs

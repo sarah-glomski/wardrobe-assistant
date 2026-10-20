@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wardrobe Assistant Guide</title>
+<meta name="description" content="How to install and use Wardrobe Assistant, a free outfit planner that keeps your closet on your own phone.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23F0B429'/><ellipse cx='50' cy='42' rx='21' ry='24' fill='none' stroke='white' stroke-width='4.5'/><rect x='45' y='65' width='10' height='6' rx='3' fill='white'/><rect x='41' y='69' width='18' height='23' rx='9' fill='white'/></svg>">
+<style>
+  :root {
+    --bg: #FAF8F5; --surface: #FFFFFF; --border: #E8E0D8; --text: #2C2C2C; --text2: #6E6A66;
+    --primary: #F0B429; --primary-dark: #A86F05; --primary-light: #FEF3C2;
+    --warn-bg: #FFF1E6; --warn: #A65A1E; --code-bg: #F2EDE7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1B1A18; --surface: #252320; --border: #3A3632; --text: #EDE9E4; --text2: #A8A29C;
+      --primary: #F0B429; --primary-dark: #F0B429; --primary-light: #3A2F12;
+      --warn-bg: #3A2617; --warn: #F0A868; --code-bg: #322F2B;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1B1A18; --surface: #252320; --border: #3A3632; --text: #EDE9E4; --text2: #A8A29C;
+    --primary: #F0B429; --primary-dark: #F0B429; --primary-light: #3A2F12;
+    --warn-bg: #3A2617; --warn: #F0A868; --code-bg: #322F2B;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  main { max-width: 680px; margin: 0 auto; padding: 40px 16px 64px; }
+  header { margin-bottom: 28px; }
+  .logo { width: 56px; height: 56px; border-radius: 14px; background: var(--primary); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+  h1 { font-size: 30px; line-height: 1.2; margin: 0 0 8px; }
+  .lede { color: var(--text2); margin: 0 0 20px; font-size: 17px; }
+  .cta {
+    display: inline-block; background: var(--primary); color: #2C2C2C; text-decoration: none;
+    font-weight: 700; padding: 12px 22px; border-radius: 12px;
+  }
+  nav.toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0 32px; }
+  nav.toc a {
+    font-size: 14px; color: var(--text2); text-decoration: none; padding: 5px 12px;
+    border: 1.5px solid var(--border); border-radius: 20px; background: var(--surface);
+  }
+  h2 { font-size: 21px; margin: 40px 0 12px; scroll-margin-top: 16px; }
+  h3 { font-size: 16px; margin: 0 0 6px; }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 0 0 12px; padding-left: 22px; }
+  li { margin: 5px 0; }
+  a { color: var(--primary-dark); font-weight: 600; overflow-wrap: anywhere; }
+  code { font: 14px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--code-bg); padding: 1px 6px; border-radius: 5px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; margin-bottom: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 12px; }
+  .grid .card { margin-bottom: 0; }
+  .card ol, .card ul, .card p:last-child { margin-bottom: 0; }
+  .callout { border-radius: 12px; padding: 14px 16px; margin: 12px 0; font-size: 15px; }
+  .callout.tip { background: var(--primary-light); }
+  .callout.warn { background: var(--warn-bg); }
+  .callout.warn strong:first-child { color: var(--warn); }
+  details { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; }
+  summary { font-weight: 600; cursor: pointer; }
+  details p { margin: 10px 0 0; }
+  footer { margin-top: 48px; color: var(--text2); font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="logo" aria-hidden="true">
+      <svg width="34" height="34" viewBox="0 0 100 100"><ellipse cx="50" cy="40" rx="24" ry="27" fill="none" stroke="white" stroke-width="7"/><rect x="44" y="68" width="12" height="8" rx="3" fill="white"/><rect x="39" y="73" width="22" height="24" rx="11" fill="white"/></svg>
+    </div>
+    <h1>Wardrobe Assistant</h1>
+    <p class="lede">A free outfit planner that helps you wear your whole closet. Snap photos of your clothes, and each morning it suggests an outfit that fits the weather and where you're going.</p>
+    <a class="cta" href="./">Open the app</a>
+  </header>
+
+  <nav class="toc" aria-label="Contents">
+    <a href="#install">Install</a>
+    <a href="#ai-tagging">AI tagging</a>
+    <a href="#using">Using it</a>
+    <a href="#data">Your data</a>
+    <a href="#tips">Tips</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+
+  <h2 id="install">1. Install it on your phone</h2>
+  <p>There's no app store download. You add the website to your home screen and it works like a regular app, even offline.</p>
+  <div class="grid">
+    <div class="card">
+      <h3>iPhone</h3>
+      <ol>
+        <li>Open this site in <strong>Safari</strong> (not Chrome or another browser)</li>
+        <li>Tap the <strong>Share</strong> button</li>
+        <li>Tap <strong>Add to Home Screen</strong></li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3>Android</h3>
+      <ol>
+        <li>Open this site in <strong>Chrome</strong></li>
+        <li>Tap the <strong>⋮</strong> menu</li>
+        <li>Tap <strong>Install app</strong> or <strong>Add to Home screen</strong></li>
+      </ol>
+    </div>
+  </div>
+  <div class="callout warn"><strong>Don't skip this step.</strong> If you only bookmark the site, Safari can erase your closet after about a week without a visit. Apps on your home screen are kept.</div>
+  <p>When the app asks for your location, allow it. It uses your location to get the local weather.</p>
+
+  <h2 id="ai-tagging">2. Set up AI tagging (optional)</h2>
+  <p>When you add a photo, the app can fill in the details for you: the type of item, its colors, style, season, how warm it is, and a name. This uses Google's Gemini AI, and you need your own free key from Google.</p>
+  <div class="card">
+    <ol>
+      <li>Go to <a href="https://aistudio.google.com">aistudio.google.com</a> and sign in with a Google account</li>
+      <li>Tap <strong>Get API Key</strong> and create a key</li>
+      <li>Copy the key</li>
+      <li>In the app, open <strong>Settings</strong>, paste the key, and tap <strong>Save Key</strong></li>
+    </ol>
+  </div>
+  <p>Your key is saved only on your phone, and it's only ever sent to Google.</p>
+  <div class="callout tip"><strong>No key?</strong> Everything still works. You just pick the tags yourself when you add an item.</div>
+  <p style="font-size:15px;color:var(--text2)">Google's free tier lets Google use what you send to improve its products. That means the photos you tag. If you'd rather it didn't, skip the key and tag items by hand.</p>
+
+  <h2 id="using">3. Using the app</h2>
+  <div class="card">
+    <h3>➕ Add your clothes</h3>
+    <p>Tap the <strong>+</strong> button and take a photo of one item at a time. It works best with the item laid flat or on a hanger. Check the suggested tags and fix anything that's off, especially <strong>Warmth</strong>, which decides when an item gets suggested. Then tap <strong>Save to Closet</strong>.</p>
+  </div>
+  <div class="card">
+    <h3>☀️ Today</h3>
+    <ul>
+      <li><strong>All day / Evening:</strong> choose <strong>All day</strong> (8am–6pm) when you'll be out all day, or <strong>Evening</strong> (6pm–midnight) when you're getting ready to go out. The outfit is picked for that stretch of the forecast, so a cool morning and a warm afternoon gets you a layer you can take off.</li>
+      <li><strong>Occasion:</strong> pick Casual, Work, Going out, Athletic, or Comfy day.</li>
+      <li><strong>🔀 Shuffle</strong> for a different outfit. Each shuffle tries new pieces instead of mixing the same few.</li>
+      <li><strong>I wore this ✓</strong> logs the outfit. The app then favors things you haven't worn in a while.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>👚 Closet</h3>
+    <p>Browse by category, or search by name, color, or style. Items you haven't worn in two weeks get an <strong>Unworn</strong> badge. Tap any item to edit it, delete it, or mark it worn today.</p>
+  </div>
+  <div class="card">
+    <h3>📅 History</h3>
+    <p>Every outfit you've logged, newest first.</p>
+  </div>
+
+  <h2 id="data">4. Your data stays on your phone</h2>
+  <p>There's no account and no server. Your photos and closet are stored only on your phone, and nobody else can see them, including whoever sent you this link. Two things are sent elsewhere:</p>
+  <ul>
+    <li>the photo you're tagging, sent to Google if you added a Gemini key</li>
+    <li>your approximate location, used to get the weather and your city name</li>
+  </ul>
+  <div class="callout warn"><strong>Back up now and then.</strong> If you delete the app or clear Safari's data, your closet is gone for good. Nobody can recover it for you. Go to <strong>Settings → Export wardrobe</strong> and save the file somewhere safe, like Files, iCloud Drive, or email it to yourself. <strong>Import wardrobe</strong> restores it, or moves it to a new phone.</div>
+  <p style="font-size:15px;color:var(--text2)">Import adds to whatever is already in the app, so import into an empty app to avoid duplicates.</p>
+
+  <h2 id="tips">Tips for better suggestions</h2>
+  <ul>
+    <li><strong>Log what you wear.</strong> The more you tap <em>I wore this</em>, the better it gets at bringing back clothes you've forgotten about.</li>
+    <li><strong>Add shoes and outerwear too.</strong> Without them, those slots stay empty.</li>
+    <li><strong>Check the warmth on older items.</strong> Items added before warmth existed show "(estimated)" when you tap them. If the guess is wrong, tap <strong>Edit</strong> and pick the right level.</li>
+    <li><strong>Keep tags honest.</strong> Outfits are matched by color, pattern, and style, so a wrong color or style tag can lead to odd pairings.</li>
+  </ul>
+
+  <h2 id="faq">FAQ</h2>
+  <details>
+    <summary>Does it cost anything?</summary>
+    <p>No. The app is free, and the free Gemini key is plenty for tagging a closet.</p>
+  </details>
+  <details>
+    <summary>Can I share my closet or outfits with someone?</summary>
+    <p>Not yet. Each person's closet lives only on their own phone.</p>
+  </details>
+  <details>
+    <summary>How do I get updates?</summary>
+    <p>They happen automatically. If something new doesn't show up, close the app fully and open it again.</p>
+  </details>
+  <details>
+    <summary>The weather is for the wrong place.</summary>
+    <p>Tap the location in the weather bar on the Today screen to search for a city, or to switch back to your current location.</p>
+  </details>
+  <details>
+    <summary>AI tagging says I hit a limit.</summary>
+    <p>The free key allows a limited number of requests. The app waits and retries automatically. If it still fails, try again later or tag the item by hand.</p>
+  </details>
+  <details>
+    <summary>I got a new phone.</summary>
+    <p>On the old phone, go to <strong>Settings → Export wardrobe</strong>. Move that file to the new phone, install the app there, and use <strong>Settings → Import wardrobe</strong>.</p>
+  </details>
+
+  <footer>
+    Wardrobe Assistant is open source. <a href="https://github.com/sarah-glomski/wardrobe-assistant">View it on GitHub</a>.
+  </footer>
+</main>
+</body>
+</html>
